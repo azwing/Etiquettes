@@ -20,3 +20,6 @@ The bash script does exactly the same bunt is for command line usage
 user issues the command with csv filename as argument
 the script returns a pdf file names sortie_a.pdf
 
+## Dependencies:
+sudo apt install qrencode imagemagick 
+
