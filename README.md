@@ -16,7 +16,10 @@ this is html / php based
 User just needs to upload csv file and script will create the pdf files with 40 labels/page
 
 ## Bash script
-The bash script does exactly the same bunt is for command line usage
+The bash script does exactly the same bunt is for command line usage but label layout is different:
+- QRcode includes a link tp my web based database
+- Name is printed with bigger font and bold
+- Numering only includes plant ID
 user issues the command with csv filename as argument
 the script returns a pdf file names sortie_a.pdf
 
