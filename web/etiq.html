@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+<link rel='stylesheet' href='styles.css'>
+    <div class="header">
+       <h1>Formulaire d'envoi de liste pour étiquettes</h1>
+    </div>
+</head>
+<body>
+    <form action="etiq.php" method="post" enctype="multipart/form-data">
+        <h2>Upload Fichier</h2>
+        <label for="fileUpload">Fichier:</label>
+        <input type="file" name="Liste" id="fileUpload">
+        <input type="submit" name="submit" value="Envoyer">
+        <p>Je numérote mes plantes comme suit: III-SSS où</p>
+        <p>III est un nombre unique de 001 à 999</p>
+        <p>et SSS le pointeur vers la source de la plante</p>
+        <p>Exemple, si une plante est une bouture le la plante 134</p>
+        <p>alors cette plante sera identifiée NNN-134</p>
+        <p>Idem pour des semis</p>
+        <p>Cela me permet de retracer la généalogie de la plante </p>
+
+        <p><strong>Note:</strong> Le fichier devra respecter le format suivant:</p>
+        <p><strong>extension:</strong> Le nom du fichier doit être sous la forme nomfichier.<b>csv</b></p>
+        <p><strong>Séparateur:</strong> sera un <b>|</b></p>
+        <p><strong>Contenu:</strong> tous les caratères sont permis sauf le <b>|</b></p>        
+        
+        <p><strong>Structure:</strong>###-###|Première ligne|Deuxième ligne|Troisième ligne</p>
+        <p>sachant que ###-### va de 000-000 à 999-999 et ce sera codé en QRcode ainsi qu'imrimé en clair</p>
+        <p>et que chaque ligne est limitée à <b>40 caratères</b></p>
+        <p>exemple</p>
+        <p>123-456,1234567890123456789012345678901234567890,Ligne 2,Ligne3</p>
+        <p>donnera l'étiquette suivante</p>
+        <p>Téléchargez l'exemple suivant: <a href="etiq.csv"> etiq.csv</a></p>
+    </form>
+        <img src="label.png" alt="Etiquette exemple" width="20%" >
+
+
+        <p>Le générateur renvoie un fichier pdf </p>
+        <p>où les étiquettes seront imprimées en planche </p>
+        <p>de 2 colonnes de 20 étiquettes</p>
+        <p>soit 40 étiquettes par page</p>
+        <p>----------------------------------------</p>
+        <p>2 ou 3 minutes pour 300 étiquettes</p>
+        <p>ça tourne sur un pauvre Raspberry Pi</p>
+
+
+</body>
+<footer>
+<a href="https://github.com/azwing/Labels">voir le code source ici</a>
+</footer>
+</html>
+

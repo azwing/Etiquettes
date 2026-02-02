@@ -1,0 +1,97 @@
+#!/bin/bash
+# invoque in the directory containing the pictures
+# with as attribute the name of the file containing the csv records (comma separated fields) as example below
+#001-001,P / BQEZNKKXJ:Ethnoplants-92,Pereskiopsis scandens,23/05/23 / Zone 10b : 1,7 à 4,4°C
+#002-002,S10 / BQEZNKKXJ:Ethnoplants-1134,Trichocereus bridgesii,13/05/23
+
+# The script creates a label with QRcode, vertical Number and three lines text
+# It then concatenates the labels in two rows of 20 labels
+# and finally converts all the pictures into an unique pdf file
+# Licensed under GPL V3
+# Copyright Alain Zwingelstein
+#
+
+compte=0
+page=0
+Page=1
+lignes=19
+rm /dev/shm/*
+
+# create an empty half page 449x1460 pixels
+convert -size 520x1460 xc:white /dev/shm/empty.png
+
+
+while IFS="|" read Numero Ligne1 Ligne2 Ligne3; do
+	echo $Numero $Ligne1 $Ligne2 $Ligne3
+	#echo $Numero
+
+	compte=$((compte + 1))
+
+	# create number part 71x24 pixels
+	convert -background white -fill black -font Arial-gras -pointsize 18 -rotate -90 -gravity center -size 69x25 caption:"$Numero" /dev/shm/tmp.png
+	convert -bordercolor white -border 1 /dev/shm/tmp.png /dev/shm/num.png
+
+	# create text part 402x71 pixels
+	convert -background white -fill black -font Arial-gras -pointsize 18 -size 420x36 -gravity west caption:"$Ligne2" /dev/shm/tmp1.png
+	convert -background white -fill black -font Arial -pointsize 12 -size 420x33 -gravity west caption:"$Ligne1\n$Ligne3" /dev/shm/tmp2.png
+	convert -append /dev/shm/tmp1.png /dev/shm/tmp2.png /dev/shm/tmp.png
+	convert -bordercolor white -border 1 /dev/shm/tmp.png /dev/shm/texte.png
+
+	# create QRCode part that give url to display database record pointed to by $Numero
+	# first convert zero leaded number to base 10 number
+	let "Num=10#${Numero}"
+	qrencode -s 2 -m 0 -o "/dev/shm/tmp.png" "https://azconcept.hd.free.fr/getcactus.php?id=$Num"
+	convert -bordercolor white -border 5 /dev/shm/tmp.png /dev/shm/code.png
+
+	# merge all three pictures into label "code + num + texte"
+	convert +append /dev/shm/code.png /dev/shm/num.png /dev/shm/texte.png /dev/shm/tmp.png
+	convert -bordercolor black -border 1 /dev/shm/tmp.png /dev/shm/sticker.png
+
+	if test -f /dev/shm/all.png; then
+		convert -append /dev/shm/all.png /dev/shm/sticker.png /dev/shm/tmp1.png
+		mv /dev/shm/tmp1.png /dev/shm/all.png
+	else
+		mv /dev/shm/sticker.png /dev/shm/all.png
+	fi
+	if (( $compte > $lignes )); then
+		page=$((page+1))
+		mv /dev/shm/all.png /dev/shm/"page$page.png"
+		if (($page % 2 == 0))
+		then
+			convert /dev/shm/page$page.png -rotate -180 /dev/shm/page$page.png
+			convert +append /dev/shm/page$((page-1)).png /dev/shm/page$page.png /dev/shm/tmp.png
+			convert -depth 8 /dev/shm/tmp.png /dev/shm/Page$(printf "%02d" $Page).png
+			Page=$((Page+1))
+		fi
+		compte=0
+	fi
+
+	# remove temporary files
+	rm /dev/shm/tmp.png
+	rm /dev/shm/num.png
+	rm /dev/shm/texte.png
+	rm /dev/shm/code.png
+
+done <$1
+
+# append the last page
+# most probably last page is not filled
+if (($compte > 0))
+
+then
+
+	page=$((page+1))
+	mv /dev/shm/all.png /dev/shm/"page$page.png"
+	if (($page % 2 == 0))
+		then
+			convert /dev/shm/page$page.png -rotate -180 /dev/shm/page$page.png
+			convert +append /dev/shm/page$((page-1)).png /dev/shm/page$page.png /dev/shm/tmp.png
+			convert -depth 8 /dev/shm/tmp.png /dev/shm/Page$Page.png
+		else
+			convert +append /dev/shm/page$((page)).png /dev/shm/empty.png /dev/shm/tmp.png
+			convert -depth 8 /dev/shm/tmp.png /dev/shm/Page$(printf "%02d" $Page).png
+	fi
+fi
+
+img2pdf --output sortie_a.pdf --pagesize A4 --border .1cm:.1cm /dev/shm/Page*
+#rm /dev/shm/*.png
