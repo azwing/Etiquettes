@@ -1,76 +1,133 @@
 #!/bin/bash
-# invoque in the directory containing the pictures
-# with as attribute the name of the file containing the csv records (comma separated fields) as example below
-#001-001,P / BQEZNKKXJ:Ethnoplants-92,Pereskiopsis scandens,23/05/23 / Zone 10b : 1,7 à 4,4°C
-#002-002,S10 / BQEZNKKXJ:Ethnoplants-1134,Trichocereus bridgesii,13/05/23
+set -euo pipefail  # Add at the beginning for safer execution
+# Label creator batch
+# Version 1.0
+# 04/02/2026
+# with as attribute the name of the file containing the csv records (using | as field separator) as example below
+#0001|P / BQEZNKKXJ:Ethnoplants-92|Pereskiopsis scandens|23/05/23 / Zone 10b : 1,7 à 4,4°C
+#0002|S10 / BQEZNKKXJ:Ethnoplants-1134|Trichocereus bridgesii|13/05/23
 
 # The script creates a label with QRcode, vertical Number and three lines text
-# It then concatenates the labels in two rows of 20 labels
+# It then concatenates the labels in two rows of 22 labels
 # and finally converts all the pictures into an unique pdf file
 # Licensed under GPL V3
 # Copyright Alain Zwingelstein
 #
 
+# Dependencies:
+# - ImageMagick (convert)
+# - qrencode
+# - img2pdf
+# Optional: csvtool for better CSV parsing
+
+# Validate input
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <csv_file>"
+    echo "CSV format: Number|Line1|Line2|Line3"
+    exit 1
+fi
+
+if [ ! -f "$1" ]; then
+    echo "Error: File '$1' not found"
+    exit 1
+fi
+
+TMP_DIR="/dev/shm/labels_$(date +%Y%m%d_%H%M%S)"
+#TMP_DIR="/dev/shm"
+OUTPUT_PDF="sortie_$(date +%Y%m%d_%H%M%S).pdf"
+FONT_SIZE_PLANT=80
+FONT_SIZE_NUM=70
+FONT_SIZE_TXT=50
+ROWS_PER_PAGE=22
+TOP_MARGIN=505
+BOTTOM_MARGIN=395
+
+cleanup() {
+    rm -r $TMP_DIR
+    rm $OUTPUT_PDF
+}
+trap cleanup EXIT INT TERM
+
+#======================= draw number 90° rotated
+create_number_image() {
+	#convert -background white -fill black -font Arial-gras -pointsize $FONT_SIZE_NUM -rotate -90 -gravity #center -size 216x98 caption:"$1" $TMP_DIR/tmp.png
+	#convert -bordercolor white -border 1 $TMP_DIR/tmp.png $TMP_DIR/num.png
+	convert -background white -fill black -font Arial-gras -pointsize $FONT_SIZE_NUM -rotate -90 -gravity center -size 216x98 caption:"$1" -bordercolor white -border 1 $TMP_DIR/num.png
+}
+
+#======================= draw Plant text and information text
+create_text_image() {
+    convert -background white -fill black -font Arial-gras -pointsize $FONT_SIZE_PLANT -size 1478x90 -gravity west caption:"$2" $TMP_DIR/tmp1.png
+	convert -background white -fill black -font Arial -pointsize $FONT_SIZE_TXT -size 1478x126 -gravity west caption:"$1\n$3" $TMP_DIR/tmp2.png
+	#convert -append $TMP_DIR/tmp1.png $TMP_DIR/tmp2.png $TMP_DIR/tmp.png
+	#convert -bordercolor white -border 1 $TMP_DIR/tmp.png $TMP_DIR/texte.png
+	convert -append $TMP_DIR/tmp1.png $TMP_DIR/tmp2.png -bordercolor white -border 1 $TMP_DIR/texte.png
+}
+
+#======================= draw number as QRCode
+create_qrcode() {
+    local numero=$1
+    # create QRCode part that give url to display database record pointed to by $Numero
+	# first convert zero leaded number to base 10 number
+	let "Num=10#${numero}"
+	qrencode -s 7 -m 0 -o "$TMP_DIR/tmp.png" "https://azconcept.hd.free.fr/getcactus.php?id=$Num"
+	convert -bordercolor white -border 7 $TMP_DIR/tmp.png $TMP_DIR/code.png
+}
+
 compte=0
 page=0
 Page=1
-lignes=19
-rm /dev/shm/*
+lignes=($ROWS_PER_PAGE-1)
 
-# create an empty half page 449x1460 pixels
-convert -size 520x1460 xc:white /dev/shm/empty.png
+mkdir -p "$TMP_DIR"
+
+# create an empty half page 2000x5740 pixels (105x297 -5mm margins)
+convert -size 2000x5740 xc:white $TMP_DIR/empty.png
+# create an empty middle part 2100x5740 pixels (20x297 - 5mm margins)
+convert -size 400x5740 xc:white $TMP_DIR/middle.png
+# create an empty top margin 605x1800 pixels
+convert -size 1800x$TOP_MARGIN xc:white $TMP_DIR/top.png
+# create an empty bottom margin 605x1800 pixels
+convert -size 1800x$BOTTOM_MARGIN xc:white $TMP_DIR/bottom.png
 
 
 while IFS="|" read Numero Ligne1 Ligne2 Ligne3; do
-	echo $Numero $Ligne1 $Ligne2 $Ligne3
-	#echo $Numero
+	#echo $Numero $Ligne1 $Ligne2 $Ligne3
+	echo "."
 
 	compte=$((compte + 1))
 
-	# create number part 71x24 pixels
-	convert -background white -fill black -font Arial-gras -pointsize 18 -rotate -90 -gravity center -size 69x25 caption:"$Numero" /dev/shm/tmp.png
-	convert -bordercolor white -border 1 /dev/shm/tmp.png /dev/shm/num.png
+	create_number_image $Numero
 
-	# create text part 402x71 pixels
-	convert -background white -fill black -font Arial-gras -pointsize 18 -size 420x36 -gravity west caption:"$Ligne2" /dev/shm/tmp1.png
-	convert -background white -fill black -font Arial -pointsize 12 -size 420x33 -gravity west caption:"$Ligne1\n$Ligne3" /dev/shm/tmp2.png
-	convert -append /dev/shm/tmp1.png /dev/shm/tmp2.png /dev/shm/tmp.png
-	convert -bordercolor white -border 1 /dev/shm/tmp.png /dev/shm/texte.png
+	create_text_image "$Ligne1" "$Ligne2" "$Ligne3"
 
-	# create QRCode part that give url to display database record pointed to by $Numero
-	# first convert zero leaded number to base 10 number
-	let "Num=10#${Numero}"
-	qrencode -s 2 -m 0 -o "/dev/shm/tmp.png" "https://azconcept.hd.free.fr/getcactus.php?id=$Num"
-	convert -bordercolor white -border 5 /dev/shm/tmp.png /dev/shm/code.png
+	create_qrcode $Numero
 
 	# merge all three pictures into label "code + num + texte"
-	convert +append /dev/shm/code.png /dev/shm/num.png /dev/shm/texte.png /dev/shm/tmp.png
-	convert -bordercolor black -border 1 /dev/shm/tmp.png /dev/shm/sticker.png
+	convert +append $TMP_DIR/code.png $TMP_DIR/num.png $TMP_DIR/texte.png $TMP_DIR/tmp.png
+	convert -bordercolor black -border 1 $TMP_DIR/tmp.png $TMP_DIR/sticker.png
 
-	if test -f /dev/shm/all.png; then
-		convert -append /dev/shm/all.png /dev/shm/sticker.png /dev/shm/tmp1.png
-		mv /dev/shm/tmp1.png /dev/shm/all.png
+	if test -f $TMP_DIR/all.png; then
+		convert -append $TMP_DIR/all.png $TMP_DIR/sticker.png $TMP_DIR/tmp1.png
+		mv $TMP_DIR/tmp1.png $TMP_DIR/all.png
 	else
-		mv /dev/shm/sticker.png /dev/shm/all.png
+		#mv $TMP_DIR/sticker.png $TMP_DIR/all.png
+		convert -append $TMP_DIR/top.png $TMP_DIR/sticker.png $TMP_DIR/all.png
 	fi
 	if (( $compte > $lignes )); then
 		page=$((page+1))
-		mv /dev/shm/all.png /dev/shm/"page$page.png"
+		mv $TMP_DIR/all.png $TMP_DIR/"page$page.png"
 		if (($page % 2 == 0))
 		then
-			convert /dev/shm/page$page.png -rotate -180 /dev/shm/page$page.png
-			convert +append /dev/shm/page$((page-1)).png /dev/shm/page$page.png /dev/shm/tmp.png
-			convert -depth 8 /dev/shm/tmp.png /dev/shm/Page$(printf "%02d" $Page).png
+			convert $TMP_DIR/page$page.png -rotate -180 $TMP_DIR/pagetmp.png
+			convert -append $TMP_DIR/bottom.png $TMP_DIR/pagetmp.png $TMP_DIR/page$page.png
+			convert +append $TMP_DIR/page$((page-1)).png $TMP_DIR/middle.png $TMP_DIR/page$page.png $TMP_DIR/tmp.png
+			convert -depth 8 $TMP_DIR/tmp.png $TMP_DIR/Page$(printf "%02d" $Page).png
 			Page=$((Page+1))
 		fi
 		compte=0
 	fi
 
-	# remove temporary files
-	rm /dev/shm/tmp.png
-	rm /dev/shm/num.png
-	rm /dev/shm/texte.png
-	rm /dev/shm/code.png
 
 done <$1
 
@@ -81,17 +138,20 @@ if (($compte > 0))
 then
 
 	page=$((page+1))
-	mv /dev/shm/all.png /dev/shm/"page$page.png"
+	mv $TMP_DIR/all.png $TMP_DIR/"page$page.png"
 	if (($page % 2 == 0))
 		then
-			convert /dev/shm/page$page.png -rotate -180 /dev/shm/page$page.png
-			convert +append /dev/shm/page$((page-1)).png /dev/shm/page$page.png /dev/shm/tmp.png
-			convert -depth 8 /dev/shm/tmp.png /dev/shm/Page$Page.png
+			convert $TMP_DIR/page$page.png -rotate -180 $TMP_DIR/pagetmp.png
+			convert -append $TMP_DIR/bottom.png $TMP_DIR/pagetmp.png $TMP_DIR/page$page.png
+			convert +append $TMP_DIR/page$((page-1)).png $TMP_DIR/middle.png $TMP_DIR/page$page.png $TMP_DIR/tmp.png
+			convert -depth 8 $TMP_DIR/tmp.png $TMP_DIR/Page$Page.png
 		else
-			convert +append /dev/shm/page$((page)).png /dev/shm/empty.png /dev/shm/tmp.png
-			convert -depth 8 /dev/shm/tmp.png /dev/shm/Page$(printf "%02d" $Page).png
+			convert +append $TMP_DIR/page$((page)).png $TMP_DIR/empty.png $TMP_DIR/tmp.png
+			convert -depth 8 $TMP_DIR/tmp.png $TMP_DIR/Page$(printf "%02d" $Page).png
 	fi
 fi
 
-img2pdf --output sortie_a.pdf --pagesize A4 --border .1cm:.1cm /dev/shm/Page*
-#rm /dev/shm/*.png
+
+img2pdf --output $OUTPUT_PDF --pagesize A4 --border 0:0 $TMP_DIR/Page*
+okular $OUTPUT_PDF
+
