@@ -25,4 +25,21 @@ the script returns a pdf file names sortie_a.pdf
 
 ## Dependencies:
 sudo apt install qrencode imagemagick 
+## Paper used
+My labels stay in the ports standing outside without shelter so I need some resistant paper and ink.
+I made several tests:
+### Inkjet, standard paper, laminated
+It works but doesn(t stay for long since moisture enters in te paper and if not it is the UV that destroy the ink.
+### 130µ polyester sheet on laser printer
+This was the first test with this type of paper since it was the chepiest of this category but even if the 
+result is excelent, resistant to moisture and UV I is too thin for my usage since I want to push them in the ground.
+### 310µ polyester sheet on laser printer
+Better stifness and reliable.
+### 350µ polyester sheet on laser printer
+This is my last choice since I received free sample from Novalith.com to test.
+The labels are stiff enough to be pushed in earth,
+they stay strait even after more than two years and more.
+Even the QRCodes stay readable after more than two seasons.
+So I leave the reference here: Novalith.com Paper ref# NLA4/LFM4.1 at an average price of 100€ shipping included.
+Since I print 40 labels/sheet it gives a 0.025€/label which is acceptable for me.
 
